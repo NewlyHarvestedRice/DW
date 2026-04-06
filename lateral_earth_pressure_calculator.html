@@ -1,0 +1,345 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font-sans);}
+.wrap{padding:1rem 0;max-width:860px;}
+h2{font-size:18px;font-weight:500;color:var(--color-text-primary);margin-bottom:1rem;}
+h3{font-size:15px;font-weight:500;color:var(--color-text-primary);margin-bottom:.75rem;}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem 1.25rem;margin-bottom:1rem;}
+label{font-size:13px;color:var(--color-text-secondary);display:block;margin-bottom:4px;}
+input,select{width:100%;height:36px;padding:0 10px;font-size:14px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary);}
+input:focus,select:focus{outline:none;border-color:var(--color-border-primary);}
+.row{display:grid;gap:10px;}
+.r2{grid-template-columns:1fr 1fr;}
+.r3{grid-template-columns:1fr 1fr 1fr;}
+.r4{grid-template-columns:1fr 1fr 1fr 1fr;}
+.r5{grid-template-columns:1fr 1fr 1fr 1fr 1fr;}
+.btn{height:40px;padding:0 20px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:transparent;color:var(--color-text-primary);font-size:14px;cursor:pointer;transition:background .15s;}
+.btn:hover{background:var(--color-background-secondary);}
+.btn-primary{background:#185FA5;color:#fff;border-color:#185FA5;}
+.btn-primary:hover{background:#0C447C;border-color:#0C447C;}
+.metric{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:1rem;text-align:center;}
+.metric-label{font-size:12px;color:var(--color-text-secondary);margin-bottom:4px;}
+.metric-val{font-size:22px;font-weight:500;color:var(--color-text-primary);}
+.metric-val.max-val{color:#185FA5;}
+.metric-val.min-val{color:#993C1D;}
+.layers-container{display:flex;flex-direction:column;gap:.75rem;}
+.layer-card{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:.75rem 1rem;background:var(--color-background-secondary);}
+.layer-title{font-size:13px;font-weight:500;color:var(--color-text-secondary);margin-bottom:.5rem;}
+.tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:var(--border-radius-md);background:var(--color-background-info);color:var(--color-text-info);margin-bottom:.5rem;}
+.step-btns{display:flex;gap:8px;margin-bottom:1rem;}
+.step-indicator{display:flex;gap:6px;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;}
+.step-dot{width:8px;height:8px;border-radius:50%;background:var(--color-border-secondary);}
+.step-dot.active{background:#185FA5;}
+.step-dot.done{background:#1D9E75;}
+.result-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:1rem;}
+.warn{font-size:12px;color:var(--color-text-secondary);margin-top:.5rem;}
+.diagram-wrap{position:relative;width:100%;overflow:hidden;}
+.section-label{font-size:12px;color:var(--color-text-tertiary);margin-bottom:.4rem;}
+.remove-btn{font-size:12px;color:var(--color-text-secondary);border:none;background:none;cursor:pointer;float:right;padding:0;}
+.remove-btn:hover{color:var(--color-text-danger);}
+.info-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:3px 0;border-bottom:0.5px solid var(--color-border-tertiary);}
+.info-row:last-child{border-bottom:none;}
+.info-key{color:var(--color-text-secondary);}
+.info-val{font-weight:500;color:var(--color-text-primary);}
+</style>
+
+<div class="wrap">
+<div id="step1-section">
+<div class="card">
+<h3>1단계: 층 개수 및 토압 종류</h3>
+<div class="row r3" style="margin-bottom:.75rem;">
+  <div>
+    <label>층 개수</label>
+    <select id="numLayers">
+      <option>1</option><option>2</option><option>3</option>
+      <option>4</option><option>5</option><option>6</option>
+    </select>
+  </div>
+  <div>
+    <label>토압 종류</label>
+    <select id="pressureType">
+      <option value="active">주동토압 (Active)</option>
+      <option value="passive">수동토압 (Passive)</option>
+      <option value="atrest">정지토압 (At-rest)</option>
+    </select>
+  </div>
+  <div>
+    <label>지하수위 깊이 (m, 지표면 기준)</label>
+    <input type="number" id="gwt" value="999" step="0.1" min="0" placeholder="없으면 큰 값 입력">
+  </div>
+</div>
+<button class="btn btn-primary" onclick="buildLayers()">층 정보 입력하기 →</button>
+</div>
+</div>
+
+<div id="step2-section" style="display:none;">
+<div class="card">
+<h3>2단계: 각 층 특성 입력</h3>
+<p class="section-label">내부마찰각(φ), 단위중량(γ)의 최솟값·최댓값과 두께를 입력하세요.</p>
+<div class="layers-container" id="layersContainer"></div>
+<div style="display:flex;gap:8px;margin-top:1rem;">
+  <button class="btn" onclick="goBack()">← 이전</button>
+  <button class="btn btn-primary" onclick="calculate()">수평토압 계산 →</button>
+</div>
+</div>
+</div>
+
+<div id="step3-section" style="display:none;">
+<div class="card">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+  <h3>계산 결과</h3>
+  <button class="btn" onclick="goBack2()" style="font-size:13px;">← 다시 계산</button>
+</div>
+<div id="resultSummary"></div>
+<div class="diagram-wrap" id="diagramWrap"></div>
+</div>
+</div>
+</div>
+
+<script>
+let layers=[];
+
+function buildLayers(){
+  const n=parseInt(document.getElementById('numLayers').value);
+  const container=document.getElementById('layersContainer');
+  container.innerHTML='';
+  layers=[];
+  for(let i=0;i<n;i++){
+    const div=document.createElement('div');
+    div.className='layer-card';
+    div.innerHTML=`
+      <div class="layer-title">층 ${i+1}</div>
+      <div class="row r5" style="gap:8px;">
+        <div><label>φ 최솟값 (°)</label><input type="number" id="phi_min_${i}" value="28" step="1" min="0" max="50"></div>
+        <div><label>φ 최댓값 (°)</label><input type="number" id="phi_max_${i}" value="32" step="1" min="0" max="50"></div>
+        <div><label>γ 최솟값 (kN/m³)</label><input type="number" id="g_min_${i}" value="17" step="0.5" min="1"></div>
+        <div><label>γ 최댓값 (kN/m³)</label><input type="number" id="g_max_${i}" value="19" step="0.5" min="1"></div>
+        <div><label>두께 (m)</label><input type="number" id="h_${i}" value="3" step="0.1" min="0.1"></div>
+      </div>`;
+    container.appendChild(div);
+    layers.push(i);
+  }
+  document.getElementById('step1-section').style.display='none';
+  document.getElementById('step2-section').style.display='block';
+}
+
+function goBack(){
+  document.getElementById('step2-section').style.display='none';
+  document.getElementById('step3-section').style.display='none';
+  document.getElementById('step1-section').style.display='block';
+}
+function goBack2(){
+  document.getElementById('step3-section').style.display='none';
+  document.getElementById('step2-section').style.display='block';
+}
+
+function Ka(phi){const r=phi*Math.PI/180;return Math.tan(Math.PI/4-r/2)**2;}
+function Kp(phi){const r=phi*Math.PI/180;return Math.tan(Math.PI/4+r/2)**2;}
+function K0(phi){return 1-Math.sin(phi*Math.PI/180);}
+
+function getK(phi,type){
+  if(type==='active') return Ka(phi);
+  if(type==='passive') return Kp(phi);
+  return K0(phi);
+}
+
+function calculate(){
+  const n=parseInt(document.getElementById('numLayers').value);
+  const type=document.getElementById('pressureType').value;
+  const gwt=parseFloat(document.getElementById('gwt').value);
+  const gw=9.81;
+
+  let layerData=[];
+  for(let i=0;i<n;i++){
+    layerData.push({
+      phi_min:parseFloat(document.getElementById(`phi_min_${i}`).value),
+      phi_max:parseFloat(document.getElementById(`phi_max_${i}`).value),
+      g_min:parseFloat(document.getElementById(`g_min_${i}`).value),
+      g_max:parseFloat(document.getElementById(`g_max_${i}`).value),
+      h:parseFloat(document.getElementById(`h_${i}`).value)
+    });
+  }
+
+  // 최대 수평토압: Ka최대 → passive이면 Kp최대 → phi큰쪽, gamma큰쪽
+  // 최소 수평토압: K최소 → phi작은쪽, gamma작은쪽
+  // 수동: phi클수록 Kp크다 → max=phi_max, min=phi_min
+  // 주동/정지: phi클수록 Ka/K0 작다 → max=phi_min, min=phi_max
+
+  function buildProfile(useMax){
+    let depths=[0];
+    let sigmaV_arr=[0];
+    let sigmaH_arr=[0];
+    let u_arr=[0];
+    let cumDepth=0;
+    let sigmaV=0;
+
+    for(let i=0;i<n;i++){
+      const ld=layerData[i];
+      const phi=useMax
+        ? (type==='passive'?ld.phi_max:ld.phi_min)
+        : (type==='passive'?ld.phi_min:ld.phi_max);
+      const g=useMax?ld.g_max:ld.g_min;
+      const h=ld.h;
+      const K=getK(phi,type);
+
+      // subdivide layer for smooth diagram
+      const steps=20;
+      const dz=h/steps;
+      for(let j=1;j<=steps;j++){
+        cumDepth+=dz;
+        const z=cumDepth;
+        const dSigV=g*dz;
+        sigmaV+=dSigV;
+        const u=Math.max(0,(z-gwt)*gw);
+        let sV_eff=sigmaV-u;
+        if(sV_eff<0)sV_eff=0;
+        const sH=K*sV_eff+(type==='active'?u:K*u);
+        // for passive, pore pressure contribution debatable; use sigma_h = K*(sigV-u) + u
+        depths.push(parseFloat(z.toFixed(3)));
+        sigmaV_arr.push(parseFloat(sigmaV.toFixed(2)));
+        sigmaH_arr.push(parseFloat(sH.toFixed(2)));
+        u_arr.push(parseFloat(u.toFixed(2)));
+      }
+    }
+    return{depths,sigmaH_arr,u_arr,sigmaV_arr};
+  }
+
+  const profMax=buildProfile(true);
+  const profMin=buildProfile(false);
+
+  const maxSH=Math.max(...profMax.sigmaH_arr);
+  const minSH=Math.min(...profMin.sigmaH_arr.filter(v=>v>=0));
+  const totalDepth=profMax.depths[profMax.depths.length-1];
+
+  // result force (trapezoidal integration)
+  function integrate(arr,depths){
+    let s=0;
+    for(let i=1;i<arr.length;i++){
+      const dz=depths[i]-depths[i-1];
+      s+=(arr[i]+arr[i-1])/2*dz;
+    }
+    return s;
+  }
+  const forceMax=integrate(profMax.sigmaH_arr,profMax.depths);
+  const forceMin=integrate(profMin.sigmaH_arr,profMin.depths);
+
+  const typeLabel={'active':'주동토압','passive':'수동토압','atrest':'정지토압'}[type];
+
+  // draw result
+  document.getElementById('step2-section').style.display='none';
+  document.getElementById('step3-section').style.display='block';
+
+  const summary=document.getElementById('resultSummary');
+  summary.innerHTML=`
+    <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;">
+      <div class="tag">${typeLabel}</div>
+      <div class="tag">총 깊이 ${totalDepth.toFixed(1)} m</div>
+      <div class="tag">GWT ${gwt>=totalDepth?'없음':gwt.toFixed(1)+'m'}</div>
+    </div>
+    <div class="result-grid" style="margin-bottom:1.25rem;">
+      <div class="metric"><div class="metric-label">최대 수평토압</div><div class="metric-val max-val">${maxSH.toFixed(1)} kPa</div></div>
+      <div class="metric"><div class="metric-label">최소 수평토압</div><div class="metric-val min-val">${minSH.toFixed(1)} kPa</div></div>
+      <div class="metric"><div class="metric-label">최대 합력 (단위폭)</div><div class="metric-val max-val">${forceMax.toFixed(1)} kN/m</div></div>
+      <div class="metric"><div class="metric-label">최소 합력 (단위폭)</div><div class="metric-val min-val">${forceMin.toFixed(1)} kN/m</div></div>
+    </div>`;
+
+  drawDiagram(profMax, profMin, layerData, gwt, totalDepth, type);
+}
+
+function drawDiagram(profMax, profMin, layerData, gwt, totalDepth, type){
+  const wrap=document.getElementById('diagramWrap');
+  const W=700, H=480;
+  const marginL=70, marginR=80, marginT=30, marginB=40;
+  const plotW=W-marginL-marginR;
+  const plotH=H-marginT-marginB;
+
+  const allH=[...profMax.sigmaH_arr,...profMin.sigmaH_arr];
+  const maxVal=Math.max(...allH)*1.15||10;
+
+  const xScale=v=>marginL+v/maxVal*plotW;
+  const yScale=d=>marginT+d/totalDepth*plotH;
+
+  // build path
+  function makePath(arr,depths){
+    let d=`M ${xScale(0)} ${yScale(0)}`;
+    for(let i=0;i<arr.length;i++){
+      d+=` L ${xScale(arr[i])} ${yScale(depths[i])}`;
+    }
+    d+=` L ${xScale(0)} ${yScale(totalDepth)} Z`;
+    return d;
+  }
+
+  const pathMax=makePath(profMax.sigmaH_arr,profMax.depths);
+  const pathMin=makePath(profMin.sigmaH_arr,profMin.depths);
+
+  // layer boundaries
+  let layerLines='';
+  let cumD=0;
+  let layerLabels='';
+  for(let i=0;i<layerData.length-1;i++){
+    cumD+=layerData[i].h;
+    const y=yScale(cumD);
+    layerLines+=`<line x1="${marginL}" y1="${y}" x2="${marginL+plotW}" y2="${y}" stroke="var(--color-border-secondary)" stroke-dasharray="4,3" stroke-width="1"/>`;
+  }
+  // layer labels on left
+  cumD=0;
+  for(let i=0;i<layerData.length;i++){
+    const midY=yScale(cumD+layerData[i].h/2);
+    layerLabels+=`<text x="${marginL-8}" y="${midY}" text-anchor="end" font-size="12" fill="var(--color-text-tertiary)">L${i+1}</text>`;
+    cumD+=layerData[i].h;
+  }
+
+  // GWT line
+  let gwtLine='';
+  if(gwt<totalDepth){
+    const y=yScale(gwt);
+    gwtLine=`<line x1="${marginL}" y1="${y}" x2="${marginL+plotW}" y2="${y}" stroke="#378ADD" stroke-dasharray="6,3" stroke-width="1.5"/>
+    <text x="${marginL+plotW+4}" y="${y+4}" font-size="11" fill="#378ADD">GWT</text>`;
+  }
+
+  // x-axis ticks
+  let xTicks='';
+  const nTicks=5;
+  for(let i=0;i<=nTicks;i++){
+    const v=maxVal*i/nTicks;
+    const x=xScale(v);
+    xTicks+=`<line x1="${x}" y1="${marginT}" x2="${x}" y2="${marginT+plotH}" stroke="var(--color-border-tertiary)" stroke-width="0.5"/>
+    <text x="${x}" y="${marginT+plotH+16}" text-anchor="middle" font-size="11" fill="var(--color-text-secondary)">${(v).toFixed(0)}</text>`;
+  }
+
+  // y-axis ticks
+  let yTicks='';
+  const yStep=totalDepth<=6?1:totalDepth<=12?2:totalDepth<=20?4:5;
+  for(let d=0;d<=totalDepth;d+=yStep){
+    const y=yScale(d);
+    yTicks+=`<line x1="${marginL-4}" y1="${y}" x2="${marginL}" y2="${y}" stroke="var(--color-border-secondary)" stroke-width="1"/>
+    <text x="${marginL-8}" y="${y+4}" text-anchor="end" font-size="11" fill="var(--color-text-secondary)">${d.toFixed(0)}</text>`;
+  }
+
+  const svg=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="plot-clip"><rect x="${marginL}" y="${marginT}" width="${plotW}" height="${plotH}"/></clipPath>
+  </defs>
+  ${xTicks}
+  <rect x="${marginL}" y="${marginT}" width="${plotW}" height="${plotH}" fill="none" stroke="var(--color-border-secondary)" stroke-width="0.5"/>
+  <g clip-path="url(#plot-clip)">
+    <path d="${pathMax}" fill="#185FA5" fill-opacity="0.18" stroke="#185FA5" stroke-width="1.5"/>
+    <path d="${pathMin}" fill="#993C1D" fill-opacity="0.15" stroke="#993C1D" stroke-width="1.5" stroke-dasharray="5,3"/>
+    ${layerLines}
+    ${gwtLine}
+  </g>
+  ${yTicks}
+  ${layerLabels}
+  <text x="${marginL+plotW/2}" y="${H-4}" text-anchor="middle" font-size="12" fill="var(--color-text-secondary)">수평토압 (kPa)</text>
+  <text x="${marginL-44}" y="${marginT+plotH/2}" text-anchor="middle" font-size="12" fill="var(--color-text-secondary)" transform="rotate(-90 ${marginL-44} ${marginT+plotH/2})">깊이 (m)</text>
+  <rect x="${marginL+plotW-150}" y="${marginT+8}" width="140" height="50" fill="var(--color-background-primary)" stroke="var(--color-border-tertiary)" stroke-width="0.5" rx="4"/>
+  <line x1="${marginL+plotW-140}" y1="${marginT+22}" x2="${marginL+plotW-116}" y2="${marginT+22}" stroke="#185FA5" stroke-width="2"/>
+  <text x="${marginL+plotW-112}" y="${marginT+26}" font-size="11" fill="var(--color-text-primary)">최대 (Max φ&amp;γ)</text>
+  <line x1="${marginL+plotW-140}" y1="${marginT+42}" x2="${marginL+plotW-116}" y2="${marginT+42}" stroke="#993C1D" stroke-width="2" stroke-dasharray="5,3"/>
+  <text x="${marginL+plotW-112}" y="${marginT+46}" font-size="11" fill="var(--color-text-primary)">최소 (Min φ&amp;γ)</text>
+</svg>`;
+
+  wrap.innerHTML=svg;
+}
+</script>
